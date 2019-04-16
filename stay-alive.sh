@@ -13,9 +13,19 @@
 #Notes       : 
 #
 
+# Set up header and data display formats
+divider="------------------------------------------------------------------"
+headerFormat="%-10s %-10s %-10s %-16s %-8s"
+dataFormat="%-10s %-10s %-10s %-16s %-8s"
+
+# The updateInterval determines how many seconds this script will sleep
+# between system info updates.
+updateInterval=5
+
+
 # Name: showAnimation
 # Parameters: none
-# Description: This function prints the line animation.
+# Description: This function prints a line animation.
 function showAnimation()
 {
   for i in {1..10} ; do
@@ -29,8 +39,36 @@ function showAnimation()
 #  echo -n $'\r'
 }
 
+# Name: updateSystemInfo
+# Parameters: none
+# Description: This function updates the system information display.
+function updateSystemInfo()
+{
+  duration=$SECONDS
+  hours=$(($duration / 3600)) 
+  minutes=$(($duration / 60)) 
+  seconds=$(($duration % 60)) 
+  elapsed="$(($duration / 3600))h:$(($duration / 60))m:$(($duration % 60))s"
+  cpuLoad=$(grep 'cpu ' /proc/stat | \
+          awk '{usage=(($2+$3+$4)*100/($2+$3+$4+$5))} \
+          END {print usage "%"}')
+#  topProcesses=$(ps -Ao comm,pid,pcpu --sort=-pcpu | head -n 3)
+  memAvailable=$(grep 'MemAvailable:' /proc/meminfo | \
+               awk '{print int($2 / 1024)}')
+  memTotal=$(grep 'MemTotal:' /proc/meminfo | awk '{print int($2 / 1024)}')
+  memPrint="${memAvailable}MB/${memTotal}MB"
+  uptime=$(cat /proc/uptime | awk '{print int($1)}')
+  uptimeH=$(($uptime / 3600))
+  uptimeM=$(($uptime % 3600 / 60))
+  uptimePrint="${uptimeH}h:${uptimeM}m"
+  serverTime=$(date +"%T")
 
-startTime=`date +%s`
+  printf "$dataFormat \r" $serverTime $elapsed $uptimePrint $memPrint $cpuLoad
+
+#  printf "\n%s" $topProcesses 
+#  $(tput cuul)
+  
+}
 
 
 # Trap ctrl + c 
@@ -42,13 +80,18 @@ function ctrl_c()
 }
 
 
-# The outer loop will print the time the script has been running and
-# then start the single line output. 
+# Print headers and data such as hostname and IP
+# that won't change over script run.
+hostName=$(hostname)
+hostIP=$(hostname -i)
+
+printf "\n%s\t%s\n" $hostName $hostIP
+printf "%s\n" $divider
+printf "$headerFormat \n" "Time" "Idle" "Uptime" "RAM Avail/Total" "CPU Load/Time"
+
+# Enter loop, updating transient system info every updateInterval interval
 while true; do 
-  showAnimation
-  newTime=`date +%s`
-  timeDiff=$newTime-$startTime
-#  echo -n "$0 has been running for $timeDiff seconds"
-  sleep 2
+  updateSystemInfo
+  sleep $updateInterval
 done
 
