@@ -15,8 +15,8 @@
 
 # Set up header and data display formats
 divider="------------------------------------------------------------------"
-headerFormat="%-10s %-10s %-10s %-16s %-8s"
-dataFormat="%-10s %-10s %-10s %-16s %-8s"
+headerFormat="%-10s %-13s %-13s %-24s %-8s"
+dataFormat="%-10s %-13s %-13s %-24s %-8s"
 
 # The updateInterval determines how many seconds this script will sleep
 # between system info updates.
@@ -45,10 +45,10 @@ function showAnimation()
 function updateSystemInfo()
 {
   duration=$SECONDS
-  hours=$(($duration / 3600)) 
-  minutes=$(($duration / 60)) 
-  seconds=$(($duration % 60)) 
-  elapsed="$(($duration / 3600))h:$(($duration / 60))m:$(($duration % 60))s"
+  elapsedHours=$(($duration / 3600)) 
+  elapsedMinutes=$(( $duration % 3600 / 60)) 
+  elapsedSeconds=$(($duration % 60)) 
+  elapsed="${elapsedHours}h:${elapsedMinutes}m:${elapsedSeconds}s"
   cpuLoad=$(grep 'cpu ' /proc/stat | \
           awk '{usage=(($2+$3+$4)*100/($2+$3+$4+$5))} \
           END {print usage "%"}')
@@ -56,7 +56,8 @@ function updateSystemInfo()
   memAvailable=$(grep 'MemAvailable:' /proc/meminfo | \
                awk '{print int($2 / 1024)}')
   memTotal=$(grep 'MemTotal:' /proc/meminfo | awk '{print int($2 / 1024)}')
-  memPrint="${memAvailable}MB/${memTotal}MB"
+  memPercentFree=$((${memAvailable} * 100 / ${memTotal}))
+  memPrint="${memAvailable}MB/${memTotal}MB/$memPercentFree%"
   uptime=$(cat /proc/uptime | awk '{print int($1)}')
   uptimeH=$(($uptime / 3600))
   uptimeM=$(($uptime % 3600 / 60))
@@ -75,7 +76,7 @@ function updateSystemInfo()
 trap ctrl_c INT
 function ctrl_c() 
 {
-  echo "ctrl-c received. Exiting"
+  printf "\n\nctrl-c received. Exiting\n"
   exit
 }
 
@@ -87,11 +88,14 @@ hostIP=$(hostname -i)
 
 printf "\n%s\t%s\n" $hostName $hostIP
 printf "%s\n" $divider
-printf "$headerFormat \n" "Time" "Idle" "Uptime" "RAM Avail/Total" "CPU Load/Time"
+printf "$headerFormat \n" "Cur Time" "Idle Period" "Sys Uptime" "RAM Avail/Total/Free%" "CPU Load/Time"
 
 # Enter loop, updating transient system info every updateInterval interval
 while true; do 
   updateSystemInfo
-  sleep $updateInterval
+  read -t $updateInterval -n1
+  if [ $? == 0 ]; then
+    exit 0
+  fi
 done
 
