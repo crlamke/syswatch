@@ -7,37 +7,66 @@
 #Author      : Chris Lamke
 #Copyright   : 2019 Christopher R Lamke
 #License     : MIT - See https://opensource.org/licenses/MIT
-#Last Update : 2019 Mar 09
-#Version     : 0.1  
+#Last Update : 2021-06-03
+#Version     : 0.2  
 #Usage       : stay-alive.sh
 #Notes       : 
 #
 
 # Set up header and data display formats
-divider="------------------------------------------------------------------"
-headerFormat="%-10s %-13s %-13s %-24s %-8s"
-dataFormat="%-10s %-13s %-13s %-24s %-8s"
+divider="-------------------------------------------------------------------------------"
+headerFormat="%-12s %-15s %-16s %-24s %-8s"
+dataFormat="%-12s %-15s %-16s %-24s %-8s"
 
 # The updateInterval determines how many seconds this script will sleep
 # between system info updates.
 updateInterval=5
 
+procCount=$(getconf _NPROCESSORS_ONLN)
 
-# Name: showAnimation
-# Parameters: none
-# Description: This function prints a line animation.
-function showAnimation()
+# Name: getElapsedTimeString
+# Parameters: elapsedSeconds
+# Description: This function accepts an integer number of seconds
+#              and returns an elapsed time string.
+function getElapsedTimeString()
 {
-  for i in {1..10} ; do
-    echo -n '['
-    for ((j=0; j<i; j++)) ; do echo -n ' '; done
-    echo -n '=>'
-    for ((j=i; j<10; j++)) ; do echo -n ' '; done
-    echo -n "] $i"0% $'\r'
-    sleep 2
-  done
-#  echo -n $'\r'
+  elapsedDays=$(($1 / 86400))
+  remainderSecs=$(($1 % 86400))
+  elapsedHours=$(($remainderSecs / 3600)) 
+  remainderSecs=$(($remainderSecs % 3600))
+  elapsedMinutes=$(($remainderSecs / 60)) 
+  elapsedSeconds=$(($remainderSecs % 60))
+  echo "${elapsedDays}d:${elapsedHours}h:${elapsedMinutes}m:${elapsedSeconds}s"
 }
+
+
+# Name: getMemStatsString
+# Parameters: None
+# Description: This function returns a string containing current mem stats.
+function getMemStatsString()
+{
+  memAvailable=$(grep 'MemAvailable:' /proc/meminfo | \
+               awk '{print int($2 / 1024)}')
+  memTotal=$(grep 'MemTotal:' /proc/meminfo | \
+               awk '{print int($2 / 1024)}')
+  memPercentFree=$((${memAvailable} * 100 / ${memTotal}))
+
+  echo "${memAvailable}MB/${memTotal}MB/${memPercentFree}%"
+}
+
+
+# Name: getLoadStatsString
+# Parameters: None
+# Description: This function returns a string containing current system load stats.
+function getLoadStatsString()
+{
+  sysLoad=$(cat /proc/loadavg)
+  oneMinLoad=$(echo $sysLoad | awk '{print $1;}')
+  fiveMinLoad=$(echo $sysLoad | awk '{print $2;}')
+  fifteenMinLoad=$(echo $sysLoad | awk '{print $3;}')
+  echo "${oneMinLoad}/${fiveMinLoad}/${fifteenMinLoad}"
+}
+
 
 # Name: updateSystemInfo
 # Parameters: none
@@ -45,30 +74,15 @@ function showAnimation()
 function updateSystemInfo()
 {
   duration=$SECONDS
-  elapsedHours=$(($duration / 3600)) 
-  elapsedMinutes=$(( $duration % 3600 / 60)) 
-  elapsedSeconds=$(($duration % 60)) 
-  elapsed="${elapsedHours}h:${elapsedMinutes}m:${elapsedSeconds}s"
-  cpuLoad=$(grep 'cpu ' /proc/stat | \
-          awk '{usage=(($2+$3+$4)*100/($2+$3+$4+$5))} \
-          END {print usage "%"}')
-#  topProcesses=$(ps -Ao comm,pid,pcpu --sort=-pcpu | head -n 3)
-  memAvailable=$(grep 'MemAvailable:' /proc/meminfo | \
-               awk '{print int($2 / 1024)}')
-  memTotal=$(grep 'MemTotal:' /proc/meminfo | awk '{print int($2 / 1024)}')
-  memPercentFree=$((${memAvailable} * 100 / ${memTotal}))
-  memPrint="${memAvailable}MB/${memTotal}MB/$memPercentFree%"
+  elapsed=$(getElapsedTimeString $duration);
+  memPrint=$(getMemStatsString); 
+  sysLoad=$(getLoadStatsString);
   uptime=$(cat /proc/uptime | awk '{print int($1)}')
-  uptimeH=$(($uptime / 3600))
-  uptimeM=$(($uptime % 3600 / 60))
-  uptimePrint="${uptimeH}h:${uptimeM}m"
+  uptimePrint=$(getElapsedTimeString $uptime);
   serverTime=$(date +"%T")
 
-  printf "$dataFormat \r" $serverTime $elapsed $uptimePrint $memPrint $cpuLoad
+  printf "$dataFormat \r" $serverTime $elapsed $uptimePrint $memPrint $sysLoad
 
-#  printf "\n%s" $topProcesses 
-#  $(tput cuul)
-  
 }
 
 
@@ -88,7 +102,7 @@ hostIP=$(hostname -i)
 
 printf "\n%s\t%s\n" $hostName $hostIP
 printf "%s\n" $divider
-printf "$headerFormat \n" "Cur Time" "Idle Period" "Sys Uptime" "RAM Avail/Total/Free%" "CPU Load/Time"
+printf "$headerFormat \n" "Sys Time" "Idle Period" "Sys Uptime" "RAM Avail/Total/Free%" "Sys Load 1m/5m/15m"
 
 # Enter loop, updating transient system info every updateInterval interval
 while true; do 
