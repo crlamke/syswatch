@@ -1,15 +1,14 @@
 #!/bin/bash 
 #
-#Script Name : stay-alive.sh
-#Description : This script will keep an ssh session alive by running
-#              until the user stops it, printing its status on the 
-#              command line.
+#Script Name : syswatch.sh
+#Description : This script will keep an ssh session alive and print
+#              basic system info until the user stops it.
 #Author      : Chris Lamke
 #Copyright   : 2019 Christopher R Lamke
 #License     : MIT - See https://opensource.org/licenses/MIT
 #Last Update : 2021-06-03
 #Version     : 0.2  
-#Usage       : stay-alive.sh
+#Usage       : syswatch.sh
 #Notes       : 
 #
 
