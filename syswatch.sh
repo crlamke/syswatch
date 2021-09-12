@@ -1,16 +1,10 @@
 #!/bin/bash 
-#
-#Script Name : syswatch.sh
-#Description : This script will keep an ssh session alive and print
-#              basic system info until the user stops it.
-#Author      : Chris Lamke
-#Copyright   : 2019 Christopher R Lamke
+#Description : This script prints basic system stats until
+#              the user stops it. It will keep an ssh session
+#              alive like top but with lower overhead.
+#Project Home: https://github.com/crlamke/syswatch
+#Copyright   : 2021 Christopher R Lamke
 #License     : MIT - See https://opensource.org/licenses/MIT
-#Last Update : 2021-06-03
-#Version     : 0.2  
-#Usage       : syswatch.sh
-#Notes       : 
-#
 
 # Set up header and data display formats
 divider="-------------------------------------------------------------------------------"
@@ -95,11 +89,18 @@ function ctrl_c()
 
 
 # Print headers and data such as hostname and IP
-# that won't change over script run.
+# that (probably) won't change over script run.
 hostName=$(hostname)
-hostIP=$(hostname -i)
+printf "\nHostname: %s\n\n" $hostName
 
-printf "\n%s\t%s\n" $hostName $hostIP
+ipInfo="Interface State IP\n"
+IFS=" "
+while read -r interface state ip
+do
+  ipInfo+="$interface $state $ip\n"
+done <<< $(ip -4 -br a | grep -v "127.0.0.1")
+echo -e $ipInfo | column -t -s " "
+
 printf "%s\n" $divider
 printf "$headerFormat \n" "Sys Time" "Idle Period" "Sys Uptime" "RAM Avail/Total/Free%" "Sys Load 1m/5m/15m"
 
