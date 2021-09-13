@@ -11,11 +11,20 @@ divider="-----------------------------------------------------------------------
 headerFormat="%-12s %-15s %-16s %-24s %-8s"
 dataFormat="%-12s %-15s %-16s %-24s %-8s"
 
+#timeHeader="Sys Time   Uptime   Watch Runtime"
+#memHeader="RAM Avail   RAM Total   RAM %Free"
+#loadHeader="Sys Load  1 Min   5 Min   15 Min"
+
+
 # The updateInterval determines how many seconds this script will sleep
 # between system info updates.
 updateInterval=5
 
+#When $exitScript becomes non-zero, exit the script.
+exitScript=0
+
 procCount=$(getconf _NPROCESSORS_ONLN)
+
 
 # Name: getElapsedTimeString
 # Parameters: elapsedSeconds
@@ -87,6 +96,103 @@ function ctrl_c()
   exit
 }
 
+function getCommandLine()
+{
+echo "params: $@";
+  currentPosition=1;
+  maxPosition=$#;
+echo $currentPosition $maxPosition;
+  while [[ $currentPosition -le $maxPosition ]];
+  do
+    case "$1" in
+      -u)
+        shift 1;
+        currentPosition=$currentPosition+1;
+        updateInterval=$1;;
+      -t) 
+        shift 1;
+        currentPosition=$currentPosition+1;
+        totalTime=$1;;
+      -l)
+        shift 1;
+        currentPosition=$currentPosition+1;
+        logging=$1;;
+      -h)
+         showUsage;
+         exitScript=1;
+         break;;
+      *) echo Invalid option: $1;
+         showUsage;
+         exitScript=1;
+         break;;
+    esac
+    shift 1;
+    currentPosition=$currentPosition+1;
+  done
+echo "update interval=$updateInterval" "logging=$logging" "totalTime=$totalTime"
+}
+
+function showUsage()
+{
+  echo "$0 is a system monitor script that displays and tracks system resources."
+  echo
+  echo "Usage: $0 [-u updateSeconds] [-t monitorMinutes] [-l logfile]"
+  echo "Options:"
+  echo "-u  Change the update interval in seconds. Default is 5"
+  echo "-t  Run monitor script for monitorMinutes minutes and then exit."
+  echo "-l  Enable logging to logfile."
+  echo
+}
+
+function setup()
+{
+  # Print headers and data such as hostname and IP
+  # that won't change over script run.
+  hostName=$(hostname)
+  hostIP=$(hostname -I)
+
+  printf "\nHostname: %s\tIPs: %s\n" "$hostName" "$hostIP"
+  printf "%s\n" "$divider"
+  printf "%s\n\n" "$timeHeader"
+  printf "%s\n" "$divider"
+  printf "%s\n\n" "$memHeader"
+  printf "%s\n" "$divider"
+  printf "%s\n\n" "$loadHeader"
+}
+
+function shutdown()
+{
+  exit 0
+}
+
+function mainLoop()
+{
+
+
+  # Enter loop, updating transient system info every $updateInterval seconds
+  while true; do
+    updateSystemInfo
+    read -t $updateInterval -n1
+    if [ $? == 0 ]; then
+      exit 0
+    fi
+  done
+}
+
+
+###
+# Start script execution
+###
+
+#getCommandLine $@
+
+#if [ $exitScript -ne 0 ]; then
+#  shutdown
+#fi
+
+#setup
+
+#mainLoop
 
 # Print headers and data such as hostname and IP
 # that (probably) won't change over script run.
@@ -112,4 +218,3 @@ while true; do
     exit 0
   fi
 done
-
